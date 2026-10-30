@@ -101,8 +101,8 @@
                         <input type="text" id="search-input" placeholder="輸入商品名稱 (例：寵物推車)..." 
                                class="w-full bg-slate-100 text-sm pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-shopee focus:bg-white transition outline-none">
                     </div>
-                    <button id="search-shopee-app-btn" class="bg-shopee hover:bg-shopee-hover text-white text-xs font-bold px-3 py-2.5 rounded-xl shadow transition flex items-center gap-1 whitespace-nowrap active:scale-95">
-                        <i class="fa-solid fa-bolt text-amber-300"></i> App搜尋
+                    <button id="search-shopee-app-btn" class="bg-shopee hover:bg-shopee-hover text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1 whitespace-nowrap active:scale-95">
+                        <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 分潤計畫App
                     </button>
                 </div>
 
@@ -365,7 +365,7 @@
             return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
         }
 
-        // 恢復正常穩定喚起蝦皮分潤計畫 App 邏輯，並自動複製關鍵字
+        // 【已修復】點擊按鈕：自動複製關鍵字到剪貼簿，並透過 shopee://affiliate 喚起 App 分潤計畫
         searchShopeeAppBtn.addEventListener('click', () => {
             const kw = searchInput.value.trim();
             if (kw) {
@@ -416,7 +416,7 @@
             });
         };
 
-        // 渲染商品列表（加入筆數限制）
+        // 渲染商品列表（支援筆數限制）
         function renderProducts() {
             const searchKw = searchInput.value.trim().toLowerCase();
             const minPrice = parseFloat(minPriceInput.value) || 0;
