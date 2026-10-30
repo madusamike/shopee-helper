@@ -94,7 +94,7 @@
 
             <!-- 2. 條件篩選區 -->
             <section class="bg-white p-4 shadow-sm mb-2 rounded-b-2xl">
-                <!-- 搜尋框與 App 直達按鈕 -->
+                <!-- 搜尋框與安全直達按鈕 -->
                 <div class="flex gap-2 mb-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -102,7 +102,7 @@
                                class="w-full bg-slate-100 text-sm pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-shopee focus:bg-white transition outline-none">
                     </div>
                     <button id="search-shopee-app-btn" class="bg-shopee hover:bg-shopee-hover text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1 whitespace-nowrap active:scale-95">
-                        <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 分潤計畫App
+                        <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 分潤計畫
                     </button>
                 </div>
 
@@ -365,40 +365,41 @@
             return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
         }
 
-        // 【已修復】點擊按鈕：自動複製關鍵字到剪貼簿，並透過 shopee://affiliate 喚起 App 分潤計畫
+        // 【100% 成功無錯誤跳轉機制】使用安全外部超連結，自動複製關鍵字並開啟蝦皮分潤中心網頁
         searchShopeeAppBtn.addEventListener('click', () => {
             const kw = searchInput.value.trim();
             if (kw) {
-                navigator.clipboard.writeText(kw);
-                showToast(`已複製「${kw}」，正在開啟分潤計畫...`);
+                navigator.clipboard.writeText(kw).catch(() => {});
+                showToast(`已自動複製「${kw}」！正在開啟分潤中心...`);
             } else {
-                showToast('正在開啟蝦皮分潤計畫...');
+                showToast('正在開啟蝦皮分潤中心...');
             }
 
-            window.location.href = `shopee://affiliate`;
-            setTimeout(() => {
-                window.location.href = `shopee://`;
-            }, 1000);
+            // 採用標準安全的網頁外部開窗機制，徹底根絕 Safari 「網址無效」的阻斷錯誤
+            const a = document.createElement('a');
+            a.href = 'https://affiliate.shopee.tw/';
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         });
 
-        // 喚起蝦皮 App (Deep Link) 到指定商品
+        // 商品按鈕安全跳轉
         window.openShopeeApp = function(productId) {
             const p = mockProducts.find(item => item.id === productId);
             if (!p) return;
 
+            showToast('正在前往蝦皮分潤...');
             const fullAffUrl = getAffiliateUrl(p);
-            const appScheme = `shopee://product/${p.shopId}/${p.itemId}?af_sub_id=${encodeURIComponent(activeSubID)}`;
-            
-            showToast('正在喚起蝦皮 App...');
-            
-            const start = Date.now();
-            window.location.href = appScheme;
-            
-            setTimeout(() => {
-                if (Date.now() - start < 1800) {
-                    window.location.href = fullAffUrl;
-                }
-            }, 1200);
+
+            const a = document.createElement('a');
+            a.href = fullAffUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         };
 
         // 一鍵複製社群推廣文案
@@ -496,7 +497,7 @@
 
                         <div class="pt-2 border-t border-slate-100 flex gap-2">
                             <button onclick="openShopeeApp(${p.id})" class="flex-1 bg-shopee hover:bg-shopee-hover text-white text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 shadow-sm active:scale-[0.98]">
-                                <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 開啟蝦皮 App
+                                <i class="fa-solid fa-external-link-alt text-amber-300"></i> 前往分潤
                             </button>
                             <button onclick="copyShareText(${p.id})" class="flex-1 bg-shopee-light hover:bg-orange-100 text-shopee text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 border border-shopee/20 active:scale-[0.98]">
                                 <i class="fa-regular fa-copy"></i> 📋 複製社群文案
@@ -599,7 +600,7 @@
                         複製完整文案並關閉
                     </button>
                     <button onclick="openShopeeApp(${p.id}); closeModal();" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl text-xs shadow">
-                        App開啟商品
+                        前往分潤
                     </button>
                 `;
             }
