@@ -365,17 +365,16 @@
             return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
         }
 
-        // 點擊 App 搜尋按鈕：自動複製關鍵字到剪貼簿，並喚起蝦皮分潤計畫
+        // 恢復正常穩定喚起蝦皮分潤計畫 App 邏輯，並自動複製關鍵字
         searchShopeeAppBtn.addEventListener('click', () => {
             const kw = searchInput.value.trim();
             if (kw) {
                 navigator.clipboard.writeText(kw);
-                showToast(`已自動複製「${kw}」！正在開啟蝦皮分潤...`);
+                showToast(`已複製「${kw}」，正在開啟分潤計畫...`);
             } else {
                 showToast('正在開啟蝦皮分潤計畫...');
             }
-            
-            // 喚起蝦皮分潤計畫專屬 Scheme 或喚起 App
+
             window.location.href = `shopee://affiliate`;
             setTimeout(() => {
                 window.location.href = `shopee://`;
@@ -444,14 +443,12 @@
                 if (sortVal === 'rate-asc') return a.rate - b.rate;
                 if (sortVal === 'sales-desc') return b.sales - a.sales;
                 if (sortVal === 'price-desc') return b.discountPrice - a.discountPrice;
-                if (sortVal === 'price-asc') return a.discountPrice - b.price;
+                if (sortVal === 'price-asc') return b.discountPrice - a.discountPrice;
                 if (sortVal === 'promoters-desc') return b.promoters - a.promoters;
                 return 0;
             });
 
-            // 依照選取的筆數限制進行切片，避免資料過多爆炸
             const limitedFiltered = filtered.slice(0, maxLimit);
-
             productCountEl.textContent = limitedFiltered.length;
 
             if (limitedFiltered.length === 0) {
