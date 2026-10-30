@@ -94,7 +94,7 @@
 
             <!-- 2. 條件篩選區 -->
             <section class="bg-white p-4 shadow-sm mb-2 rounded-b-2xl">
-                <!-- 搜尋框與安全直達 App 按鈕 -->
+                <!-- 搜尋框與 App 直達按鈕 -->
                 <div class="flex gap-2 mb-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -134,9 +134,20 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="text-xs text-slate-600 block mb-1">推廣創作者人數 (>=)</label>
-                        <input type="number" id="min-promoters" placeholder="例如：20" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-slate-600 block mb-1">推廣人數 (>=)</label>
+                            <input type="number" id="min-promoters" placeholder="例如：20" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-600 block mb-1">顯示筆數限制</label>
+                            <select id="limit-select" class="w-full bg-slate-50 text-xs px-2.5 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee font-medium">
+                                <option value="50">50 筆</option>
+                                <option value="100" selected>100 筆</option>
+                                <option value="200">200 筆</option>
+                                <option value="500">500 筆</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button id="apply-filter-btn" class="w-full bg-shopee hover:bg-shopee-hover text-white text-sm font-bold py-2.5 rounded-xl shadow-md transition active:scale-[0.98]">
@@ -322,6 +333,7 @@
         const minRateInput = document.getElementById('min-rate');
         const minSalesInput = document.getElementById('min-sales');
         const minPromotersInput = document.getElementById('min-promoters');
+        const limitSelect = document.getElementById('limit-select');
         const sortSelect = document.getElementById('sort-select');
         const filterPanel = document.getElementById('filter-panel');
         const toggleFilterBtn = document.getElementById('toggle-filter-btn');
@@ -353,29 +365,41 @@
             return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
         }
 
-        // 採用安全防阻斷機制：透過隱藏連結喚起蝦皮，避免 Safari 彈出無效報錯
+        // 點擊 App 搜尋按鈕：自動複製關鍵字到剪貼簿，並喚起蝦皮分潤計畫
         searchShopeeAppBtn.addEventListener('click', () => {
             const kw = searchInput.value.trim();
-            showToast('正在開啟蝦皮分潤中心...');
+            if (kw) {
+                navigator.clipboard.writeText(kw);
+                showToast(`已自動複製「${kw}」！正在開啟蝦皮分潤...`);
+            } else {
+                showToast('正在開啟蝦皮分潤計畫...');
+            }
             
-            // 建立一個安全的隱藏超連結，強制以系統預設外部方式開啟
-            const a = document.createElement('a');
-            a.href = kw ? `https://affiliate.shopee.tw/` : `https://shopee.tw/`;
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // 喚起蝦皮分潤計畫專屬 Scheme 或喚起 App
+            window.location.href = `shopee://affiliate`;
+            setTimeout(() => {
+                window.location.href = `shopee://`;
+            }, 1000);
         });
 
-        // 商品按鈕安全跳轉
+        // 喚起蝦皮 App (Deep Link) 到指定商品
         window.openShopeeApp = function(productId) {
-            showToast('正在前往蝦皮...');
-            const a = document.createElement('a');
-            a.href = 'https://affiliate.shopee.tw/';
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const p = mockProducts.find(item => item.id === productId);
+            if (!p) return;
+
+            const fullAffUrl = getAffiliateUrl(p);
+            const appScheme = `shopee://product/${p.shopId}/${p.itemId}?af_sub_id=${encodeURIComponent(activeSubID)}`;
+            
+            showToast('正在喚起蝦皮 App...');
+            
+            const start = Date.now();
+            window.location.href = appScheme;
+            
+            setTimeout(() => {
+                if (Date.now() - start < 1800) {
+                    window.location.href = fullAffUrl;
+                }
+            }, 1200);
         };
 
         // 一鍵複製社群推廣文案
@@ -393,7 +417,7 @@
             });
         };
 
-        // 渲染商品列表
+        // 渲染商品列表（加入筆數限制）
         function renderProducts() {
             const searchKw = searchInput.value.trim().toLowerCase();
             const minPrice = parseFloat(minPriceInput.value) || 0;
@@ -401,6 +425,7 @@
             const minRate = parseFloat(minRateInput.value) || 0;
             const minSales = parseFloat(minSalesInput.value) || 0;
             const minPromoters = parseFloat(minPromotersInput.value) || 0;
+            const maxLimit = parseInt(limitSelect.value) || 100;
             const sortVal = sortSelect.value;
 
             let filtered = mockProducts.filter(p => {
@@ -419,14 +444,17 @@
                 if (sortVal === 'rate-asc') return a.rate - b.rate;
                 if (sortVal === 'sales-desc') return b.sales - a.sales;
                 if (sortVal === 'price-desc') return b.discountPrice - a.discountPrice;
-                if (sortVal === 'price-asc') return a.discountPrice - b.discountPrice;
+                if (sortVal === 'price-asc') return a.discountPrice - b.price;
                 if (sortVal === 'promoters-desc') return b.promoters - a.promoters;
                 return 0;
             });
 
-            productCountEl.textContent = filtered.length;
+            // 依照選取的筆數限制進行切片，避免資料過多爆炸
+            const limitedFiltered = filtered.slice(0, maxLimit);
 
-            if (filtered.length === 0) {
+            productCountEl.textContent = limitedFiltered.length;
+
+            if (limitedFiltered.length === 0) {
                 productListEl.innerHTML = `
                     <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 p-6">
                         <i class="fa-solid fa-magnifying-glass text-3xl text-slate-300 mb-2"></i>
@@ -437,7 +465,7 @@
                 return;
             }
 
-            productListEl.innerHTML = filtered.map(p => {
+            productListEl.innerHTML = limitedFiltered.map(p => {
                 const earnAmount = (p.discountPrice * (p.rate / 100)).toFixed(1);
                 return `
                     <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col space-y-2 relative">
@@ -471,7 +499,7 @@
 
                         <div class="pt-2 border-t border-slate-100 flex gap-2">
                             <button onclick="openShopeeApp(${p.id})" class="flex-1 bg-shopee hover:bg-shopee-hover text-white text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 shadow-sm active:scale-[0.98]">
-                                <i class="fa-solid fa-external-link-alt text-amber-300"></i> 前往分潤
+                                <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 開啟蝦皮 App
                             </button>
                             <button onclick="copyShareText(${p.id})" class="flex-1 bg-shopee-light hover:bg-orange-100 text-shopee text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 border border-shopee/20 active:scale-[0.98]">
                                 <i class="fa-regular fa-copy"></i> 📋 複製社群文案
@@ -574,7 +602,7 @@
                         複製完整文案並關閉
                     </button>
                     <button onclick="openShopeeApp(${p.id}); closeModal();" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl text-xs shadow">
-                        前往分潤中心
+                        App開啟商品
                     </button>
                 `;
             }
@@ -629,6 +657,7 @@
 
         searchInput.addEventListener('input', renderProducts);
         sortSelect.addEventListener('change', renderProducts);
+        limitSelect.addEventListener('change', renderProducts);
         applyFilterBtn.addEventListener('click', renderProducts);
 
         resetFiltersBtn.addEventListener('click', () => {
@@ -638,6 +667,7 @@
             minRateInput.value = '';
             minSalesInput.value = '';
             minPromotersInput.value = '';
+            limitSelect.value = '100';
             sortSelect.value = 'rate-desc';
             renderProducts();
             showToast('已重設篩選條件');
