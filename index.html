@@ -94,15 +94,15 @@
 
             <!-- 2. 條件篩選區 -->
             <section class="bg-white p-4 shadow-sm mb-2 rounded-b-2xl">
-                <!-- 搜尋框與安全直達分潤中心按鈕 -->
+                <!-- 搜尋框與直達 App 按鈕 -->
                 <div class="flex gap-2 mb-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="search-input" placeholder="搜尋商品名稱 (例：寵物推車)..." 
+                        <input type="text" id="search-input" placeholder="輸入商品名稱 (例：寵物推車)..." 
                                class="w-full bg-slate-100 text-sm pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-shopee focus:bg-white transition outline-none">
                     </div>
                     <button id="search-shopee-app-btn" class="bg-shopee hover:bg-shopee-hover text-white text-xs font-bold px-3 py-2.5 rounded-xl shadow transition flex items-center gap-1 whitespace-nowrap active:scale-95">
-                        <i class="fa-solid fa-external-link-alt text-amber-300"></i> 分潤中心
+                        <i class="fa-solid fa-bolt text-amber-300"></i> App搜尋
                     </button>
                 </div>
 
@@ -353,25 +353,32 @@
             return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
         }
 
-        // 安全開新分頁連至蝦皮分潤中心，並自動複製關鍵字
+        // 使用原本成功開啟 App 的穩定喚起邏輯
         searchShopeeAppBtn.addEventListener('click', () => {
             const kw = searchInput.value.trim();
-            if (kw) {
-                navigator.clipboard.writeText(kw);
-                showToast(`已複製「${kw}」，正在前往分潤中心...`);
-            } else {
-                showToast('正在前往蝦皮分潤中心...');
-            }
-
-            setTimeout(() => {
-                window.open('https://affiliate.shopee.tw/', '_blank');
-            }, 600);
+            showToast('正在喚起蝦皮 App 搜尋...');
+            const targetUrl = kw ? `shopee://search?keyword=${encodeURIComponent(kw)}` : `shopee://`;
+            window.location.href = targetUrl;
         });
 
-        // 安全開啟分潤中心
+        // 喚起蝦皮 App (Deep Link) 到指定商品
         window.openShopeeApp = function(productId) {
-            showToast('正在前往分潤中心...');
-            window.open('https://affiliate.shopee.tw/', '_blank');
+            const p = mockProducts.find(item => item.id === productId);
+            if (!p) return;
+
+            const fullAffUrl = getAffiliateUrl(p);
+            const appScheme = `shopee://product/${p.shopId}/${p.itemId}?af_sub_id=${encodeURIComponent(activeSubID)}`;
+            
+            showToast('正在喚起蝦皮 App...');
+            
+            const start = Date.now();
+            window.location.href = appScheme;
+            
+            setTimeout(() => {
+                if (Date.now() - start < 1800) {
+                    window.location.href = fullAffUrl;
+                }
+            }, 1200);
         };
 
         // 一鍵複製社群推廣文案
@@ -467,7 +474,7 @@
 
                         <div class="pt-2 border-t border-slate-100 flex gap-2">
                             <button onclick="openShopeeApp(${p.id})" class="flex-1 bg-shopee hover:bg-shopee-hover text-white text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 shadow-sm active:scale-[0.98]">
-                                <i class="fa-solid fa-external-link-alt text-amber-300"></i> 前往分潤
+                                <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 開啟蝦皮 App
                             </button>
                             <button onclick="copyShareText(${p.id})" class="flex-1 bg-shopee-light hover:bg-orange-100 text-shopee text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 border border-shopee/20 active:scale-[0.98]">
                                 <i class="fa-regular fa-copy"></i> 📋 複製社群文案
@@ -570,7 +577,7 @@
                         複製完整文案並關閉
                     </button>
                     <button onclick="openShopeeApp(${p.id}); closeModal();" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl text-xs shadow">
-                        前往分潤中心
+                        App開啟商品
                     </button>
                 `;
             }
