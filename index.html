@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蝦皮分潤選品助手 WebApp</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        shopee: {
+                            DEFAULT: '#EE4D2D',
+                            hover: '#D73211',
+                            light: '#FFF0ED',
+                            bg: '#F5F5F5'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .phone-container {
+            width: 100%;
+            max-width: 430px;
+            height: 100vh;
+            max-height: 932px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            border-radius: 36px;
+            overflow: hidden;
+            border: 8px solid #1c1c1e;
+        }
+        @media (max-width: 640px) {
+            .phone-container {
+                border: none;
+                border-radius: 0;
+                max-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 flex justify-center items-center min-h-screen font-sans antialiased select-none">
+
+    <!-- 手機容器 (9:16 Mobile Viewport) -->
+    <div class="phone-container bg-shopee-bg flex flex-col relative text-slate-800">
+
+        <!-- 1. 頂部狀態列與 Header -->
+        <header class="bg-shopee text-white pt-3 pb-3 px-4 shadow-md z-20 flex-shrink-0">
+            <div class="w-28 h-4 bg-black rounded-full mx-auto mb-2 opacity-20 sm:block hidden"></div>
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-bag-shopping text-xl"></i>
+                    <h1 class="text-lg font-bold tracking-wide">蝦皮分潤選品助手</h1>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="toggle-subid-btn" class="text-xs bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-full transition flex items-center gap-1">
+                        <i class="fa-solid fa-id-card"></i> 編號/SubID
+                    </button>
+                    <button id="reset-filters" class="text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-full transition">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 推廣者編號 / SubID 列 -->
+            <div id="subid-bar" class="mt-2.5 pt-2 border-t border-white/20 flex items-center justify-between text-xs">
+                <span class="font-medium text-amber-100 flex items-center gap-1">
+                    <i class="fa-solid fa-user-tag"></i> 推廣者編號:
+                </span>
+                <div class="flex items-center gap-1.5 flex-1 max-w-[210px] ml-2">
+                    <input type="text" id="subid-input" value="16390210028" placeholder="輸入推廣者編號/SubID..." 
+                           class="w-full bg-white/20 text-white placeholder-white/60 px-2.5 py-1 rounded-lg border border-white/30 text-xs focus:bg-white focus:text-slate-800 focus:outline-none font-mono">
+                    <button id="save-subid-btn" class="bg-amber-400 text-slate-900 font-bold px-2 py-1 rounded-lg text-[11px] whitespace-nowrap shadow hover:bg-amber-300">
+                        儲存
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要內容區域 -->
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-20">
+
+            <!-- 2. 條件篩選區 -->
+            <section class="bg-white p-4 shadow-sm mb-2 rounded-b-2xl">
+                <!-- 搜尋框與 Deep Link 直達按鈕 -->
+                <div class="flex gap-2 mb-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-input" placeholder="搜尋商品名稱 (例：寵物推車)..." 
+                               class="w-full bg-slate-100 text-sm pl-10 pr-3 py-2.5 rounded-xl border border-transparent focus:border-shopee focus:bg-white transition outline-none">
+                    </div>
+                    <button id="search-shopee-app-btn" class="bg-shopee hover:bg-shopee-hover text-white text-xs font-bold px-3 py-2.5 rounded-xl shadow transition flex items-center gap-1 whitespace-nowrap active:scale-95">
+                        <i class="fa-solid fa-bolt text-amber-300"></i> App搜尋
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-sliders mr-1"></i> 多條件精準篩選</span>
+                    <button id="toggle-filter-btn" class="text-xs text-shopee font-semibold flex items-center gap-1">
+                        <span>進階選項</span> <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" id="filter-arrow"></i>
+                    </button>
+                </div>
+
+                <div id="filter-panel" class="space-y-3 pt-1 border-t border-slate-100">
+                    <div>
+                        <label class="text-xs text-slate-600 block mb-1">商品金額區間 ($)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="min-price" placeholder="最低" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                            <span class="text-slate-400 text-xs">-</span>
+                            <input type="number" id="max-price" placeholder="最高" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-slate-600 block mb-1">最低分潤率 (%)</label>
+                            <input type="number" id="min-rate" placeholder="例如：10" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-600 block mb-1">已售出數 (>=)</label>
+                            <input type="number" id="min-sales" placeholder="例如：100" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-slate-600 block mb-1">推廣創作者人數 (>=)</label>
+                        <input type="number" id="min-promoters" placeholder="例如：20" class="w-full bg-slate-50 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-shopee">
+                    </div>
+
+                    <button id="apply-filter-btn" class="w-full bg-shopee hover:bg-shopee-hover text-white text-sm font-bold py-2.5 rounded-xl shadow-md transition active:scale-[0.98]">
+                        <i class="fa-solid fa-filter mr-1.5"></i> 套用條件篩選
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3. 分類頁籤 -->
+            <section class="px-3 mb-2">
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar py-1" id="category-tabs">
+                    <button data-cat="all" class="cat-btn active bg-shopee text-white px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shadow-sm">全部</button>
+                    <button data-cat="pet" class="cat-btn bg-white text-slate-600 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-slate-200">寵物用品</button>
+                    <button data-cat="home" class="cat-btn bg-white text-slate-600 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-slate-200">居家生活</button>
+                    <button data-cat="beauty" class="cat-btn bg-white text-slate-600 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-slate-200">美妝保養</button>
+                    <button data-cat="appliance" class="cat-btn bg-white text-slate-600 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-slate-200">家電影音</button>
+                    <button data-cat="food" class="cat-btn bg-white text-slate-600 px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-slate-200">美食伴手禮</button>
+                </div>
+            </section>
+
+            <!-- 4. 數據排序列 -->
+            <section class="px-4 py-1.5 flex justify-between items-center text-xs text-slate-500">
+                <div>找到 <span id="product-count" class="font-bold text-shopee">0</span> 筆商品</div>
+                <div class="flex items-center space-x-1">
+                    <i class="fa-solid fa-arrow-down-wide-short text-slate-400"></i>
+                    <select id="sort-select" class="bg-transparent font-medium text-slate-700 outline-none cursor-pointer">
+                        <option value="rate-desc">分潤率：高 → 低</option>
+                        <option value="rate-asc">分潤率：低 → 高</option>
+                        <option value="sales-desc">熱銷售出：多 → 少</option>
+                        <option value="price-desc">價格：高 → 低</option>
+                        <option value="price-asc">價格：低 → 高</option>
+                        <option value="promoters-desc">推廣人數：多 → 少</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- 5. 商品卡片清單 -->
+            <section class="px-3 space-y-3 mt-1" id="product-list">
+                <!-- 動態注入商品卡片 -->
+            </section>
+
+        </main>
+
+        <!-- 模擬圖一/圖二/圖三全螢幕模態框 -->
+        <div id="modal-backdrop" class="fixed inset-0 bg-black/60 z-50 hidden flex flex-col justify-end transition-opacity duration-300">
+            <div id="modal-card" class="bg-white rounded-t-3xl overflow-hidden max-h-[90vh] flex flex-col relative transition-transform duration-300 translate-y-full">
+                <div class="p-3 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-600" id="modal-step-title">步驟 1/3：模擬蝦皮商品頁</span>
+                    <button id="close-modal-btn" class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-sm hover:bg-slate-300">✕</button>
+                </div>
+                <div class="overflow-y-auto p-4 space-y-4" id="modal-body-content"></div>
+                <div class="p-3 bg-white border-t border-slate-100 flex gap-2" id="modal-footer-btns"></div>
+            </div>
+        </div>
+
+        <!-- Toast 提示語 -->
+        <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-800/90 text-white text-xs px-4 py-2 rounded-full shadow-lg transition duration-300 opacity-0 pointer-events-none z-50 flex items-center space-x-1.5">
+            <i class="fa-solid fa-circle-check text-green-400"></i>
+            <span id="toast-msg">已成功複製推廣文案！</span>
+        </div>
+
+        <!-- 6. 底部導覽列 -->
+        <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto z-30 px-6 py-2 flex justify-between items-center text-slate-400">
+            <button class="flex flex-col items-center space-y-1 text-shopee">
+                <i class="fa-solid fa-compass text-lg"></i>
+                <span class="text-[10px] font-medium">選品台</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 hover:text-slate-600 transition">
+                <i class="fa-solid fa-id-card text-lg"></i>
+                <span class="text-[10px] font-medium font-mono"><span id="nav-subid-label">16390210028</span></span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 hover:text-slate-600 transition">
+                <i class="fa-solid fa-chart-line text-lg"></i>
+                <span class="text-[10px] font-medium">數據績效</span>
+            </button>
+            <button class="flex flex-col items-center space-y-1 hover:text-slate-600 transition">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span class="text-[10px] font-medium">推廣設定</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        const mockProducts = [
+            {
+                id: 101,
+                title: '寵物拉桿包 寵物推車 寵物提籠寵物包 寵物背包 寵物外出包 寵物後背包',
+                category: 'pet',
+                price: 849,
+                discountPrice: 669,
+                rate: 10.0,
+                sales: 530,
+                promoters: 50,
+                image: 'https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/3fX9A1B',
+                shopId: '123456',
+                itemId: '7890123'
+            },
+            {
+                id: 1,
+                title: '【MOCODO 旗艦館】全方位防滑厚底拖鞋 靜音防水居家室內鞋',
+                category: 'home',
+                price: 880,
+                discountPrice: 349,
+                rate: 38.0,
+                sales: 5000,
+                promoters: 128,
+                image: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/8kL0P3Q',
+                shopId: '98765',
+                itemId: '4321098'
+            },
+            {
+                id: 2,
+                title: '工業級防水膠 通用7000 995 089 密封膠 外牆專用 中性矽利康',
+                category: 'home',
+                price: 169,
+                discountPrice: 169,
+                rate: 32.0,
+                sales: 798,
+                promoters: 85,
+                image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/4mT7Y2W',
+                shopId: '55443',
+                itemId: '9988776'
+            },
+            {
+                id: 3,
+                title: '【BRITA 德國】雙效芯 濾水壺 3.5L 專業濾芯 PRO版 買大送小組合',
+                category: 'home',
+                price: 580,
+                discountPrice: 280,
+                rate: 9.0,
+                sales: 17,
+                promoters: 12,
+                image: 'https://images.unsplash.com/photo-1585515320310-259814833e62?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/6pR1V5Z',
+                shopId: '11223',
+                itemId: '3344556'
+            },
+            {
+                id: 4,
+                title: 'ParkCat 貓貓餐廳 豆腐貓砂 1kg/2kg/6kg 貓砂界之王 買三送一',
+                category: 'pet',
+                price: 599,
+                discountPrice: 599,
+                rate: 28.0,
+                sales: 1000,
+                promoters: 310,
+                image: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/1nC3D8E',
+                shopId: '66778',
+                itemId: '2233445'
+            },
+            {
+                id: 5,
+                title: '【Lysol 衛新】衣物消毒液 1000ml 殺菌99.9% 溫和無漂白水味',
+                category: 'beauty',
+                price: 319,
+                discountPrice: 319,
+                rate: 23.0,
+                sales: 3000,
+                promoters: 96,
+                image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&auto=format&fit=crop&q=80',
+                shortCode: 's.shopee.tw/9xZ8K0L',
+                shopId: '88990',
+                itemId: '1122334'
+            }
+        ];
+
+        let currentCategory = 'all';
+        let activeSubID = localStorage.getItem('shopee_subid') || '16390210028';
+        let currentModalProduct = null;
+
+        // DOM 引用
+        const productListEl = document.getElementById('product-list');
+        const productCountEl = document.getElementById('product-count');
+        const searchInput = document.getElementById('search-input');
+        const minPriceInput = document.getElementById('min-price');
+        const maxPriceInput = document.getElementById('max-price');
+        const minRateInput = document.getElementById('min-rate');
+        const minSalesInput = document.getElementById('min-sales');
+        const minPromotersInput = document.getElementById('min-promoters');
+        const sortSelect = document.getElementById('sort-select');
+        const filterPanel = document.getElementById('filter-panel');
+        const toggleFilterBtn = document.getElementById('toggle-filter-btn');
+        const filterArrow = document.getElementById('filter-arrow');
+        const applyFilterBtn = document.getElementById('apply-filter-btn');
+        const resetFiltersBtn = document.getElementById('reset-filters');
+        const subidInput = document.getElementById('subid-input');
+        const saveSubidBtn = document.getElementById('save-subid-btn');
+        const navSubidLabel = document.getElementById('nav-subid-label');
+        const searchShopeeAppBtn = document.getElementById('search-shopee-app-btn');
+        const toastEl = document.getElementById('toast');
+        const toastMsgEl = document.getElementById('toast-msg');
+
+        // 初始化 SubID 顯示
+        subidInput.value = activeSubID;
+        navSubidLabel.textContent = activeSubID;
+
+        saveSubidBtn.addEventListener('click', () => {
+            const val = subidInput.value.trim() || '16390210028';
+            activeSubID = val;
+            localStorage.setItem('shopee_subid', activeSubID);
+            navSubidLabel.textContent = activeSubID;
+            showToast(`推廣者編號已更新: ${activeSubID}`);
+            renderProducts();
+        });
+
+        // 取得帶有推廣者編號的網址
+        function getAffiliateUrl(p) {
+            return `https://${p.shortCode}?smtt=0.0.9&sub_id=${encodeURIComponent(activeSubID)}`;
+        }
+
+        // 搜尋直接喚起蝦皮 App 搜尋頁面
+        searchShopeeAppBtn.addEventListener('click', () => {
+            const kw = searchInput.value.trim();
+            showToast('正在喚起蝦皮 App 搜尋...');
+            const targetUrl = kw ? `shopee://search?keyword=${encodeURIComponent(kw)}` : `shopee://`;
+            window.location.href = targetUrl;
+        });
+
+        // 喚起蝦皮 App (Deep Link) 到指定商品
+        window.openShopeeApp = function(productId) {
+            const p = mockProducts.find(item => item.id === productId);
+            if (!p) return;
+
+            const fullAffUrl = getAffiliateUrl(p);
+            const appScheme = `shopee://product/${p.shopId}/${p.itemId}?af_sub_id=${encodeURIComponent(activeSubID)}`;
+            
+            showToast('正在喚起蝦皮 App...');
+            
+            const start = Date.now();
+            window.location.href = appScheme;
+            
+            setTimeout(() => {
+                if (Date.now() - start < 1800) {
+                    window.location.href = fullAffUrl;
+                }
+            }, 1200);
+        };
+
+        // 一鍵複製社群推廣文案
+        window.copyShareText = function(productId) {
+            const p = mockProducts.find(item => item.id === productId);
+            if (!p) return;
+
+            const affUrl = getAffiliateUrl(p);
+            const shareText = `🔥【熱銷爆款推薦】\n${p.title}\n\n💰 券後優惠價: $${p.discountPrice} (已售出 ${p.sales} 件)\n🎁 專屬優惠連結: ${affUrl}\n\n#蝦皮推廣 #推廣編號${activeSubID} #分潤好物`;
+
+            navigator.clipboard.writeText(shareText).then(() => {
+                showToast(`已複製帶有編號 ${activeSubID} 的社群文案`);
+            }).catch(() => {
+                showToast('複製失敗，請重試');
+            });
+        };
+
+        // 渲染商品列表
+        function renderProducts() {
+            const searchKw = searchInput.value.trim().toLowerCase();
+            const minPrice = parseFloat(minPriceInput.value) || 0;
+            const maxPrice = parseFloat(maxPriceInput.value) || Infinity;
+            const minRate = parseFloat(minRateInput.value) || 0;
+            const minSales = parseFloat(minSalesInput.value) || 0;
+            const minPromoters = parseFloat(minPromotersInput.value) || 0;
+            const sortVal = sortSelect.value;
+
+            let filtered = mockProducts.filter(p => {
+                const matchCat = currentCategory === 'all' || p.category === currentCategory;
+                const matchKw = !searchKw || p.title.toLowerCase().includes(searchKw);
+                const matchPrice = p.discountPrice >= minPrice && p.discountPrice <= maxPrice;
+                const matchRate = p.rate >= minRate;
+                const matchSales = p.sales >= minSales;
+                const matchPromoters = p.promoters >= minPromoters;
+
+                return matchCat && matchKw && matchPrice && matchRate && matchSales && matchPromoters;
+            });
+
+            filtered.sort((a, b) => {
+                if (sortVal === 'rate-desc') return b.rate - a.rate;
+                if (sortVal === 'rate-asc') return a.rate - b.rate;
+                if (sortVal === 'sales-desc') return b.sales - a.sales;
+                if (sortVal === 'price-desc') return b.discountPrice - a.discountPrice;
+                if (sortVal === 'price-asc') return a.discountPrice - b.discountPrice;
+                if (sortVal === 'promoters-desc') return b.promoters - a.promoters;
+                return 0;
+            });
+
+            productCountEl.textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                productListEl.innerHTML = `
+                    <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 p-6">
+                        <i class="fa-solid fa-magnifying-glass text-3xl text-slate-300 mb-2"></i>
+                        <p class="text-sm text-slate-500 font-medium">找不到符合條件的商品</p>
+                        <p class="text-xs text-slate-400 mt-1">嘗試調整篩選條件</p>
+                    </div>
+                `;
+                return;
+            }
+
+            productListEl.innerHTML = filtered.map(p => {
+                const earnAmount = (p.discountPrice * (p.rate / 100)).toFixed(1);
+                return `
+                    <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col space-y-2 relative">
+                        <div onclick="openMockModal(${p.id}, 1)" class="flex space-x-3 cursor-pointer">
+                            <div class="w-24 h-24 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden relative">
+                                <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover">
+                                <span class="absolute top-1 left-1 bg-shopee text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                                    ${p.rate}% 分潤
+                                </span>
+                            </div>
+
+                            <div class="flex-1 flex flex-col justify-between">
+                                <h3 class="text-xs font-semibold text-slate-800 line-clamp-2 leading-relaxed">
+                                    ${p.title}
+                                </h3>
+                                
+                                <div class="space-y-1">
+                                    <div class="flex justify-between items-baseline">
+                                        <span class="text-xs text-slate-400">券後價: <span class="text-shopee font-bold text-sm">$${p.discountPrice}</span></span>
+                                        <span class="text-xs text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">預估賺 $${earnAmount}</span>
+                                    </div>
+
+                                    <div class="flex items-center space-x-2 text-[11px] text-slate-500">
+                                        <span><i class="fa-solid fa-fire text-amber-500 mr-0.5"></i>已售 ${p.sales}</span>
+                                        <span class="text-slate-300">|</span>
+                                        <span><i class="fa-solid fa-users text-blue-500 mr-0.5"></i>${p.promoters}位推廣</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 flex gap-2">
+                            <button onclick="openShopeeApp(${p.id})" class="flex-1 bg-shopee hover:bg-shopee-hover text-white text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 shadow-sm active:scale-[0.98]">
+                                <i class="fa-solid fa-bolt text-amber-300"></i> ⚡ 開啟蝦皮 App
+                            </button>
+                            <button onclick="copyShareText(${p.id})" class="flex-1 bg-shopee-light hover:bg-orange-100 text-shopee text-xs font-bold py-2 rounded-xl transition flex justify-center items-center gap-1 border border-shopee/20 active:scale-[0.98]">
+                                <i class="fa-regular fa-copy"></i> 📋 複製社群文案
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 模擬圖一/圖二/圖三彈窗
+        window.openMockModal = function(productId, step) {
+            currentModalProduct = mockProducts.find(p => p.id === productId);
+            if (!currentModalProduct) return;
+
+            const backdrop = document.getElementById('modal-backdrop');
+            const card = document.getElementById('modal-card');
+            const titleEl = document.getElementById('modal-step-title');
+            const bodyEl = document.getElementById('modal-body-content');
+            const footerEl = document.getElementById('modal-footer-btns');
+
+            const p = currentModalProduct;
+            const earn = (p.discountPrice * (p.rate / 100)).toFixed(1);
+            const affUrl = getAffiliateUrl(p);
+
+            backdrop.classList.remove('hidden');
+            setTimeout(() => card.classList.remove('translate-y-full'), 10);
+
+            if (step === 1) {
+                titleEl.textContent = '步驟 1/3：蝦皮商品詳情頁 (圖一)';
+                bodyEl.innerHTML = `
+                    <div class="rounded-xl overflow-hidden border border-slate-100">
+                        <img src="${p.image}" class="w-full h-56 object-cover">
+                        <div class="p-3 space-y-2">
+                            <h2 class="text-sm font-bold text-slate-800">${p.title}</h2>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-xs text-slate-400 line-through">$${p.price}</span>
+                                    <span class="text-lg font-bold text-shopee ml-1">$${p.discountPrice}</span>
+                                    <span class="text-xs bg-orange-100 text-shopee font-bold px-1 rounded">券後價</span>
+                                </div>
+                                <span class="text-xs text-slate-500">已售出 ${p.sales} 件</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                footerEl.innerHTML = `
+                    <button onclick="openMockModal(${p.id}, 2)" class="w-full bg-shopee text-white font-bold py-3 rounded-xl text-sm shadow flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-share"></i> 點擊「分享/賺取分潤」進入圖二
+                    </button>
+                `;
+            } else if (step === 2) {
+                titleEl.textContent = '步驟 2/3：分享推廣連結底盤 (圖二)';
+                bodyEl.innerHTML = `
+                    <div class="bg-amber-50 rounded-xl p-3 border border-amber-200 text-xs space-y-1">
+                        <div class="flex justify-between font-bold text-slate-800">
+                            <span>推廣分潤率：<span class="text-shopee">${p.rate}%</span></span>
+                            <span>預估分潤：<span class="text-shopee">$${earn}</span></span>
+                        </div>
+                        <p class="text-slate-500 text-[11px]">推廣者編號: <span class="font-mono text-slate-700">${activeSubID}</span></p>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-3 text-center py-2">
+                        <div class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-lg shadow"><i class="fa-solid fa-comment"></i></div>
+                            <span class="text-[10px] text-slate-600 mt-1">LINE</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-lg shadow"><i class="fa-brands fa-threads"></i></div>
+                            <span class="text-[10px] text-slate-600 mt-1">Threads</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-sky-500 text-white flex items-center justify-center text-lg shadow"><i class="fa-brands fa-whatsapp"></i></div>
+                            <span class="text-[10px] text-slate-600 mt-1">WhatsApp</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-blue-700 text-white flex items-center justify-center text-lg shadow"><i class="fa-brands fa-facebook-f"></i></div>
+                            <span class="text-[10px] text-slate-600 mt-1">Facebook</span>
+                        </div>
+                    </div>
+                `;
+                footerEl.innerHTML = `
+                    <button onclick="openMockModal(${p.id}, 3)" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl text-sm shadow flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-ellipsis"></i> 點擊「更多 / 系統分享」進入圖三
+                    </button>
+                `;
+            } else if (step === 3) {
+                titleEl.textContent = '步驟 3/3：系統原生分享選單 (圖三)';
+                bodyEl.innerHTML = `
+                    <div class="bg-slate-100 rounded-2xl p-4 text-center space-y-3">
+                        <div class="w-12 h-12 rounded-2xl bg-white mx-auto shadow flex items-center justify-center text-shopee text-2xl font-bold">字</div>
+                        <p class="text-xs text-slate-600 font-medium">快來看看 『${p.title}』</p>
+                        <div class="p-2 bg-white rounded-xl text-[11px] font-mono text-slate-500 break-all border border-slate-200">
+                            ${affUrl}
+                        </div>
+                    </div>
+                `;
+                footerEl.innerHTML = `
+                    <button onclick="copyShareText(${p.id}); closeModal();" class="flex-1 bg-shopee text-white font-bold py-3 rounded-xl text-xs shadow">
+                        複製完整文案並關閉
+                    </button>
+                    <button onclick="openShopeeApp(${p.id}); closeModal();" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl text-xs shadow">
+                        App開啟商品
+                    </button>
+                `;
+            }
+        };
+
+        function closeModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const card = document.getElementById('modal-card');
+            card.classList.add('translate-y-full');
+            setTimeout(() => backdrop.classList.add('hidden'), 300);
+        }
+
+        document.getElementById('close-modal-btn').onclick = closeModal;
+
+        function showToast(msg) {
+            toastMsgEl.textContent = msg;
+            toastEl.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toastEl.classList.add('opacity-0', 'pointer-events-none');
+            }, 2000);
+        }
+
+        // 分類切換
+        document.getElementById('category-tabs').addEventListener('click', (e) => {
+            const btn = e.target.closest('.cat-btn');
+            if (!btn) return;
+
+            document.querySelectorAll('.cat-btn').forEach(b => {
+                b.classList.remove('active', 'bg-shopee', 'text-white', 'shadow-sm');
+                b.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+            });
+
+            btn.classList.add('active', 'bg-shopee', 'text-white', 'shadow-sm');
+            btn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+
+            currentCategory = btn.dataset.cat;
+            renderProducts();
+        });
+
+        // 進階選項開關
+        let isFilterOpen = true;
+        toggleFilterBtn.addEventListener('click', () => {
+            isFilterOpen = !isFilterOpen;
+            if (isFilterOpen) {
+                filterPanel.classList.remove('hidden');
+                filterArrow.classList.remove('rotate-180');
+            } else {
+                filterPanel.classList.add('hidden');
+                filterArrow.classList.add('rotate-180');
+            }
+        });
+
+        searchInput.addEventListener('input', renderProducts);
+        sortSelect.addEventListener('change', renderProducts);
+        applyFilterBtn.addEventListener('click', renderProducts);
+
+        resetFiltersBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            minPriceInput.value = '';
+            maxPriceInput.value = '';
+            minRateInput.value = '';
+            minSalesInput.value = '';
+            minPromotersInput.value = '';
+            sortSelect.value = 'rate-desc';
+            renderProducts();
+            showToast('已重設篩選條件');
+        });
+
+        renderProducts();
+    </script>
+</body>
+</html>
